@@ -1,0 +1,24 @@
+# This file is where you define your pipelines. You can define multiple.
+# For more information on multiple pipelines, see the documentation:
+#   https://www.elastic.co/guide/en/logstash/current/multiple-pipelines.html
+
+- pipeline.id: main
+  path.config: "/usr/share/logstash/pipeline"
+
+- pipeline.id: shipments
+  path.config: "/usr/share/logstash/config/config_files/logstash-shipments.conf"
+
+- pipeline.id: threads
+  path.config: "/usr/share/logstash/config/config_files/logstash-threads.conf"
+
+- pipeline.id: emails
+  path.config: "/usr/share/logstash/config/config_files/logstash-emails.conf"
+
+- pipeline.id: carriers
+  path.config: "/usr/share/logstash/config/config_files/logstash-carriers.conf"
+
+- pipeline.id: carriers_agents
+  path.config: "/usr/share/logstash/config/config_files/logstash-carrieragents.conf"
+
+- pipeline.id: business_users
+  path.config: "/usr/share/logstash/config/config_files/logstash-users.conf"

@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+    # web:
+    #     build:
+    #         context: .
+    #         dockerfile: ./core/Dockerfile
+    #     container_name: fastapi
+    #     restart: always
+    #     ports: 
+    #         - 8000:8000
+    #     volumes: 
+    #         - .:/code
+    #         - fastapi:/code/data
+    #     networks: 
+    #         - elastic
+    #     environment:
+    #         - FASTAPI_SIMPLE_SECURITY_SECRET=1c2251c4-644c-4fab-a708-57388e197bfa
+    #         - FAST_API_SIMPLE_SECURITY_AUTOMATIC_EXPIRATION=365
+    #     depends_on: 
+    #         - mongodb
+    
+    mongodb:
+        image: mongo
+        container_name: mongodb
+        restart: always
+        environment:
+            MONGO_INITDB_ROOT_USERNAME: root
+            MONGO_INITDB_ROOT_PASSWORD: mongodb
+            MONGO_INITDB_DATABASE: elasticsearch_db
+        volumes: 
+            - mongodb:/data/db
+        ports:
+            - 27017:27017
+        networks:
+            - elastic
+
+    mongo-express:
+        image: mongo-express
+        container_name: mongo-express
+        restart: always
+        ports:
+            - 8081:8081
+        environment:
+            ME_CONFIG_MONGODB_ADMINUSERNAME: root
+            ME_CONFIG_MONGODB_ADMINPASSWORD: mongodb
+            ME_CONFIG_MONGODB_URL: mongodb://root:mongodb@mongodb:27017/
+        networks:
+            - elastic
+        depends_on: 
+            - mongodb
+
+    elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:7.14.0
+        container_name: elasticsearch
+        environment: 
+            - node.name=elasticsearch
+            - cluster.name=docker-cluster
+            - discovery.type=single-node
+            - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+        volumes: 
+            - elasticsearch_data:/usr/share/elasticsearch/data
+        networks: 
+            - elastic
+        ulimits:
+            memlock:
+                soft: -1
+                hard: -1
+        ports:
+            - "9200:9200"
+    
+    logstash:
+        container_name: logstash
+        build:
+            context: .
+            dockerfile: ./compose/logstash/Dockerfile
+        volumes: 
+            - .:/code
+            - ./compose/logstash/logstash.conf:/usr/share/logstash/config/logstash.conf
+            - ./compose/logstash/config_files:/usr/share/logstash/config/config_files
+            - ./compose/logstash/logstash_templates:/usr/share/logstash/config/logstash_templates
+            - ./compose/logstash/pipelines.yml:/usr/share/logstash/config/pipelines.yml
+            - ./compose/logstash/shipments.json:/usr/share/logstash/config/shipments.json
+        command: bin/logstash -f /usr/share/logstash/config/logstash.conf
+        ports:
+            - 9600:9600
+            - 5044:5044
+        networks:
+            - elastic
+        depends_on:
+            - elasticsearch
+            - kibana
+
+    kibana:
+        image: docker.elastic.co/kibana/kibana:7.14.0
+        container_name: kibana
+        ports:
+            - 5601:5601
+        environment:
+            elasticsearch_URL: http://elasticsearch:9200
+            elasticsearch_HOSTS: '["http://elasticsearch:9200"]'
+        networks:
+            - elastic
+        depends_on:
+            - elasticsearch
+
+volumes:
+    elasticsearch_data:
+        driver: local
+    mongodb:
+        driver: local
+    fastapi:
+        driver: local
+
+networks: 
+    elastic:
+        driver: bridge
